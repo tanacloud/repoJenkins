@@ -2,30 +2,29 @@ pipeline {
     agent any
 
     environment {
-        GIT_CREDENTIALS_ID = 'github-credentials'  
-        SONARQUBE_SERVER = 'SonarQube'  // Nome do servidor configurado no Jenkins
-        SONARQUBE_PROJECT_KEY = 'repoJenkins'  
-        SONAR_TOKEN = credentials('sonar-token-id')  
+        GIT_CREDENTIALS_ID = 'github-credentials'  // ID da credencial do GitHub no Jenkins
+        SONARQUBE_SERVER = 'http://35.174.156.37:9000/'  // IP do seu SonarQube
+        SONARQUBE_PROJECT_KEY = 'repoJenkins'  // Nome do projeto no SonarQube
+        SONAR_TOKEN = credentials('sonar-token-id')  // ID da credencial do SonarQube no Jenkins
+        MAVEN_HOME = '/usr/share/maven'  // Caminho do Maven, caso precise
     }
 
     stages {
         stage('Checkout do Código') {
             steps {
-                script {
-                    checkout([$class: 'GitSCM',
-                        branches: [[name: '*/main']],
-                        userRemoteConfigs: [[
-                            url: 'https://github.com/tanacloud/repoJenkins.git',
-                            credentialsId: env.GIT_CREDENTIALS_ID
-                        ]]
-                    ])
-                }
+                checkout([$class: 'GitSCM',
+                    branches: [[name: '*/main']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/tanacloud/repoJenkins.git',
+                        credentialsId: env.GIT_CREDENTIALS_ID
+                    ]]
+                ])
             }
         }
 
         stage('Instalar Dependências') {
             steps {
-                sh 'pip install -r requirements.txt'
+                sh 'pip install --user -r requirements.txt'
             }
         }
 
@@ -37,31 +36,24 @@ pipeline {
 
         stage('Análise com SonarQube') {
             steps {
-                script {
-                    def sonarCommand = """
-                        sonar-scanner \\
-                        -Dsonar.projectKey=${env.SONARQUBE_PROJECT_KEY} \\
-                        -Dsonar.sources=. \\
-                        -Dsonar.host.url=${env.SONARQUBE_SERVER} \\
-                        -Dsonar.token=${env.SONAR_TOKEN}
-                    """
-                    sh sonarCommand
-                }
+                sh """
+                    /opt/sonar-scanner/bin/sonar-scanner \
+                        -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONARQUBE_SERVER} \
+                        -Dsonar.login=${SONAR_TOKEN}
+                """
             }
         }
 
         stage('Deploy para AWS CodeDeploy') {
             steps {
-                script {
-                    def commitId = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-                    def deployCommand = """
-                        aws deploy create-deployment \\
-                        --application-name MyFlaskApp \\
-                        --deployment-group-name MyDeploymentGroup \\
-                        --github-location repository=tanacloud/repoJenkins,commitId=${commitId}
-                    """
-                    sh deployCommand
-                }
+                sh """
+                    aws deploy create-deployment \
+                        --application-name MyFlaskApp \
+                        --deployment-group-name MyDeploymentGroup \
+                        --github-location repository=tanacloud/repoJenkins,commitId=$(git rev-parse HEAD)
+                """
             }
         }
     }
