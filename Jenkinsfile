@@ -34,17 +34,17 @@ pipeline {
             }
         }
 
-        stage('Análise com SonarQube') {
-            steps {
-                sh """
-                    /opt/sonar-scanner/bin/sonar-scanner \
-                        -Dsonar.projectKey=${SONARQUBE_PROJECT_KEY} \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONARQUBE_SERVER} \
-                        -Dsonar.login=${SONAR_TOKEN}
-                """
-            }
-        }
+stage('Análise com SonarQube') {
+    steps {
+        sh '''
+            /opt/sonar-scanner/bin/sonar-scanner \
+                -Dsonar.projectKey=repoJenkins \
+                -Dsonar.sources=. \
+                -Dsonar.host.url=http://35.174.156.37:9000 \
+                -Dsonar.login=$SONAR_TOKEN
+        '''
+    }
+}
 
         stage('Deploy para AWS CodeDeploy') {
             steps {
