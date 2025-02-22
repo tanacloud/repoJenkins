@@ -31,7 +31,7 @@ pipeline {
 
         stage('Executar Testes') {
             steps {
-                sh 'python -m unittest discover tests'
+                sh 'python3 -m unittest discover tests'
             }
         }
 
